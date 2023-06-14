@@ -1,22 +1,25 @@
 from pyspark import SparkContext
 from pyspark.sql import SparkSession
 from pyspark.ml.feature import StringIndexer
-from pyspark.ml.classification import LogisticRegression, LinearSVC
+from pyspark.ml.classification import LogisticRegression, LinearSVC, RandomForestClassifier
 from pyspark.sql.functions import rand
 from pyspark.ml.feature import VectorAssembler
 from pyspark.ml.evaluation import MulticlassClassificationEvaluator
 from pyspark.ml.tuning import CrossValidator, ParamGridBuilder
+import numpy as np
 
 
 sc = SparkContext(appName='teleco-customer-churn')
 spark = SparkSession.builder.getOrCreate()
+sc.setLogLevel('FATAL')
 
-customers_table = spark.read.csv('../data/WA_Fn-UseC_-Telco-Customer-Churn.csv', 
+customers_table = spark.read.csv('./data/WA_Fn-UseC_-Telco-Customer-Churn.csv', 
                                  header='true', 
                                  inferSchema='true')
 customers_table = customers_table.sample(withReplacement=False, fraction=0.15, seed=42)#erase this line for production
 
 def data_wrangling(initial_dataset):
+    print('-'*36, '\nStarting Data Wrangling')
     treated_dataset = initial_dataset.withColumnRenamed('gender', 'Gender')\
                                     .withColumnRenamed('tenure', 'Tenure')\
                                     .withColumnRenamed('customerId', 'CustomerId')
@@ -26,6 +29,8 @@ def data_wrangling(initial_dataset):
     return treated_dataset
 
 def transform_string_variables_to_numeric(dataset):
+    print('-'*36, '\nTranforming string variables to numeric variables')
+
     dataset = dataset.drop('CustomerId')
 
     string_variables = [variable[0] for variable in dataset.dtypes if variable[1] == 'string']
@@ -42,6 +47,8 @@ def transform_string_variables_to_numeric(dataset):
     return dataset_numeric
 
 def vectorize_dataframe(dataframe, label):
+    print('-'*36, '\nVectorizing the dataframe')
+
     features_cols = dataframe.drop(label).columns
 
     vecAssembler = VectorAssembler(inputCols=features_cols, outputCol='features')
@@ -51,6 +58,7 @@ def vectorize_dataframe(dataframe, label):
     return vectorized_df
 
 def train_test_splitter(dataframe, train_ratio = 0.7, seed=42):
+    print('-'*36, '\nSplitting train and test tables')
     pre_split_dataframe = dataframe.withColumn('train_test_index', rand(seed=seed))
     
     train_dataframe = pre_split_dataframe.filter(pre_split_dataframe.train_test_index <= train_ratio)
@@ -66,13 +74,21 @@ def train_test_splitter(dataframe, train_ratio = 0.7, seed=42):
 #----
 
 
+def undersample(dataset, sample=0.4):
+    undersampled_label = dataset.filter('Churn == 0').sample(sample)
+    undersampled_dataset = undersampled_label.union(dataset.filter('Churn == 1'))
+    print('Undersampled dataset label ratio:\n')
+    undersampled_dataset.groupBy('Churn').count().show()
+
+    return undersampled_dataset
+
 def evaluate_model(model, dataset, evaluator):
     prediction = model.transform(dataset)
 
     f1_score = evaluator.evaluate(prediction)
     accuracy_score = evaluator.evaluate(prediction, {evaluator.metricName:'accuracy'})
     recall_score = evaluator.evaluate(prediction, {evaluator.metricName:'recallByLabel'})
-    confusion_matrix = prediction.groupBy('Churn', 'prediction').count()
+    confusion_matrix = prediction.groupBy('Churn', 'prediction').count().collect()
     
     return f1_score, accuracy_score, recall_score, confusion_matrix
 
@@ -119,7 +135,7 @@ def train_svm_model(train_dataset, test_dataset, estimator):
 
     f1_score, accuracy_score, recall_score, confusion_matrix = evaluate_model(cv_fitted.bestModel, test_dataset, evaluator)
 
-    results = {'algorithm':'LogisticRegression',
+    results = {'algorithm':'SVM',
                'f1_score':f1_score,
                'accuracy':accuracy_score,
                'recall':recall_score,
@@ -129,29 +145,102 @@ def train_svm_model(train_dataset, test_dataset, estimator):
 
     return results
 
-def train_models(train_dataset, test_dataset, estimators:list, evaluator):
+def train_random_forest_model(train_dataset, test_dataset, estimator):
+    print('Training Random Forest')
+    featureSubsetStrategy_params = estimator['params']['featureSubsetStrategy']
+    numTrees_params = estimator['params']['numTrees']
+    random_forest_model = RandomForestClassifier(labelCol='Churn')
+    evaluator = MulticlassClassificationEvaluator(labelCol='Churn', metricName='f1', metricLabel=1.0)
+
+    
+    params_grid = ParamGridBuilder().addGrid(random_forest_model.featureSubsetStrategy, featureSubsetStrategy_params) \
+                                    .addGrid(random_forest_model.numTrees, numTrees_params) \
+                                    .build()
+    
+    cv = CrossValidator(estimator=random_forest_model, estimatorParamMaps=params_grid, evaluator=evaluator)
+    cv_fitted = cv.fit(dataset=train_dataset)
+
+    f1_score, accuracy_score, recall_score, confusion_matrix = evaluate_model(cv_fitted.bestModel, test_dataset, evaluator)
+
+    results = {'algorithm':'RandomForest',
+               'f1_score':f1_score,
+               'accuracy':accuracy_score,
+               'recall':recall_score,
+               'confusion_matrix':confusion_matrix,
+               'params':cv_fitted.bestModel.extractParamMap()
+               }
+
+    return results
+
+def train_models(train_dataset, test_dataset, estimators:list):
     models_results = []
     for estimator in estimators:
+        local_train_dataset = train_dataset
+
+        if estimator['undersample'] == True:
+            local_train_dataset = undersample(train_dataset)
+
         if estimator['algorithm'] == 'LogisticRegression':
-            model_results = train_lr_model(train_dataset, test_dataset, estimator)
+            print('-'*36, '\nTraining Logistic Regression Model')
+            model_results = train_lr_model(local_train_dataset, test_dataset, estimator)
         if estimator['algorithm'] == 'SVM':
-            model_results = train_svm_model(train_dataset, test_dataset, estimator)    
+            print('-'*36, '\nTraining SVM Model')
+            model_results = train_svm_model(local_train_dataset, test_dataset, estimator)
+        if estimator['algorithm'] == 'RandomForest':
+            print('-'*36, '\nTraining Random Forest Model')
+            model_results = train_random_forest_model(local_train_dataset, test_dataset, estimator)
+
         models_results.append(model_results)
     
-    return model_results
+    return models_results
     
 
 
 #---
 
-models_and_params = [{'algorithm':'LogisticRegression', 
-                      'params':{'maxIter':[75, 100, 150, 200, 250],
-                                'regParam':[100.0, 10.0, 1.0, 0.1, 0.01]
+models_and_params = [{'algorithm':'LogisticRegression',
+                      'undersample':False, 
+                      'params':{'maxIter':[75, 100],
+                                'regParam':[1.0, 0.1, 0.01]
+                                }
+                    },
+                    {'algorithm':'LogisticRegression',
+                      'undersample':True, 
+                      'params':{'maxIter':[75, 100],
+                                'regParam':[1.0, 0.1, 0.01]
                                 }
                     },
                     {'algorithm':'SVM',
-                     'params':{'maxIter':[75, 100, 150, 200, 250],
-                                'regParam':[100.0, 10.0, 1.0, 0.1, 0.01]
+                     'undersample':True,
+                     'params':{'maxIter':[75, 100],
+                                'regParam':[1.0, 0.1, 0.01]
                                 }
+                    },
+                    {'algorithm':'RandomForest',
+                     'undersample':True,
+                     'params':{'featureSubsetStrategy':[1, 2, 4, 6, 9],
+                               'numTrees':[10, 20, 100]
+                         
+                     }
                     }
                     ]
+
+
+customers_table = data_wrangling(customers_table)
+customers_table = transform_string_variables_to_numeric(customers_table)
+customers_table = vectorize_dataframe(customers_table, 'Churn')
+train_table, test_table = train_test_splitter(customers_table)
+
+results = train_models(train_dataset=train_table, test_dataset=test_table, estimators=models_and_params)
+
+
+print(results)
+print('-'*36, '\nSalvando os resultados...')
+np.savetxt('models_results.csv',
+           results,
+           delimiter = '},',
+           fmt = '% s')
+
+print('-'*36, '\nEncerrando a Spark Session e o Spark Context...')
+spark.stop()
+sc.stop()

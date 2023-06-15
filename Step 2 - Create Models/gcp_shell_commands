@@ -1,0 +1,9 @@
+gcloud config set project meetz-tech
+ 
+gcloud dataproc clusters create telco-model-benchmark --region=us-east1 
+
+gcloud dataproc jobs submit pyspark \
+gs://bucket_name/file_name.py \
+--cluster=telco-model-benchmark \
+--py-files='gs://bucket_name/file_name.py' \
+--region=us-east1

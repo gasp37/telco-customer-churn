@@ -1,9 +1,11 @@
-gcloud config set project meetz-tech
+gcloud config set project telco-customers-churn-390019
  
-gcloud dataproc clusters create telco-model-benchmark --region=us-east1 
+gcloud dataproc clusters create telco-model-benchmark --region=us-east1
 
 gcloud dataproc jobs submit pyspark \
-gs://bucket_name/file_name.py \
+gs://telco-churn-project/scripts/models-benchmarking.py \
 --cluster=telco-model-benchmark \
---py-files='gs://bucket_name/file_name.py' \
+--py-files='gs://telco-churn-project/scripts/models-benchmarking.py' \
 --region=us-east1
+
+gcloud dataproc clusters delete telco-model-benchmark --region=us-east1 --quiet

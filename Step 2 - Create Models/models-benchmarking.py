@@ -6,17 +6,17 @@ from pyspark.sql.functions import rand
 from pyspark.ml.feature import VectorAssembler
 from pyspark.ml.evaluation import MulticlassClassificationEvaluator
 from pyspark.ml.tuning import CrossValidator, ParamGridBuilder
-import numpy as np
 
 
 sc = SparkContext(appName='teleco-customer-churn')
 spark = SparkSession.builder.getOrCreate()
 sc.setLogLevel('FATAL')
+print('Spark version:', sc.version)
 
-customers_table = spark.read.csv('./data/WA_Fn-UseC_-Telco-Customer-Churn.csv', 
+customers_table = spark.read.csv('gs://telco-churn-project/data/WA_Fn-UseC_-Telco-Customer-Churn.csv', 
                                  header='true', 
                                  inferSchema='true')
-customers_table = customers_table.sample(withReplacement=False, fraction=0.15, seed=42)#erase this line for production
+
 
 def data_wrangling(initial_dataset):
     print('-'*36, '\nStarting Data Wrangling')
@@ -27,6 +27,14 @@ def data_wrangling(initial_dataset):
     treated_dataset = treated_dataset.withColumn('TotalCharges', treated_dataset.TotalCharges.cast('double'))
 
     return treated_dataset
+
+# In spark versions earlier than 3.4.0 we can use the method DataFrame.withColumnsRenamed().
+# Since Dataproc currently only has up to the 3.3.0 version available, we'll create this simple function.
+def rename_columns(dataset, dict):
+    for column in dict:
+        dataset = dataset.withColumnRenamed(column, dict[column])
+    return dataset
+    
 
 def transform_string_variables_to_numeric(dataset):
     print('-'*36, '\nTranforming string variables to numeric variables')
@@ -42,7 +50,7 @@ def transform_string_variables_to_numeric(dataset):
 
     dict_for_renaming_columns = {string_variables_new_cols[index]:string_variables[index] for index in range(len(string_variables))}
     dataset_numeric = dataset_numeric.drop(*string_variables)
-    dataset_numeric = dataset_numeric.withColumnsRenamed(dict_for_renaming_columns)
+    dataset_numeric = rename_columns(dataset_numeric, dict_for_renaming_columns)
 
     return dataset_numeric
 
@@ -200,26 +208,29 @@ def train_models(train_dataset, test_dataset, estimators:list):
 
 models_and_params = [{'algorithm':'LogisticRegression',
                       'undersample':False, 
-                      'params':{'maxIter':[75, 100],
-                                'regParam':[1.0, 0.1, 0.01]
+                      'params':{'maxIter':[75, 100, 150, 200, 250],
+                                'regParam':[100, 10., 1.0, 0.1, 0.01, 0.001]
                                 }
                     },
                     {'algorithm':'LogisticRegression',
                       'undersample':True, 
-                      'params':{'maxIter':[75, 100],
-                                'regParam':[1.0, 0.1, 0.01]
+                      'params':{'maxIter':[75, 100, 150, 200, 250],
+                                'regParam':[100, 10., 1.0, 0.1, 0.01, 0.001]
                                 }
                     },
                     {'algorithm':'SVM',
                      'undersample':True,
-                     'params':{'maxIter':[75, 100],
-                                'regParam':[1.0, 0.1, 0.01]
+                     'params':{'maxIter':[75, 100, 150, 200, 250],
+                                'regParam':[100, 10., 1.0, 0.1, 0.01, 0.001]
                                 }
                     },
                     {'algorithm':'RandomForest',
                      'undersample':True,
-                     'params':{'featureSubsetStrategy':[1, 2, 4, 6, 9],
-                               'numTrees':[10, 20, 100]
+                     'params':{'featureSubsetStrategy':['1', '2', '4', '6', '9'],
+                               'numTrees':[10, 20, 100],
+                               'maxDepth':[3, 5, 7, 9, 11],
+                               'minInstancesPerNode':[1, 2, 3, 4, 5],
+                               'impurity':['gini', 'entropy']
                          
                      }
                     }
@@ -236,10 +247,9 @@ results = train_models(train_dataset=train_table, test_dataset=test_table, estim
 
 print(results)
 print('-'*36, '\nSalvando os resultados...')
-np.savetxt('models_results.csv',
-           results,
-           delimiter = '},',
-           fmt = '% s')
+sdf_results = spark.createDataFrame(results)
+sdf_results.coalesce(1).write.mode('overwrite').format('json').save('gs://telco-churn-project/results')
+
 
 print('-'*36, '\nEncerrando a Spark Session e o Spark Context...')
 spark.stop()

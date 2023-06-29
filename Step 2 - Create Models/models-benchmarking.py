@@ -122,7 +122,7 @@ def train_lr_model(train_dataset, test_dataset, estimator):
                'accuracy':accuracy_score,
                'recall':recall_score,
                'confusion_matrix':confusion_matrix,
-               'params':cv_fitted.bestModel.extractParamMap()
+               'params':str(cv_fitted.bestModel.extractParamMap())
                }
 
     return results
@@ -148,7 +148,7 @@ def train_svm_model(train_dataset, test_dataset, estimator):
                'accuracy':accuracy_score,
                'recall':recall_score,
                'confusion_matrix':confusion_matrix,
-               'params':cv_fitted.bestModel.extractParamMap()
+               'params':str(cv_fitted.bestModel.extractParamMap())
                }
 
     return results
@@ -175,7 +175,7 @@ def train_random_forest_model(train_dataset, test_dataset, estimator):
                'accuracy':accuracy_score,
                'recall':recall_score,
                'confusion_matrix':confusion_matrix,
-               'params':cv_fitted.bestModel.extractParamMap()
+               'params':str(cv_fitted.bestModel.extractParamMap())
                }
 
     return results

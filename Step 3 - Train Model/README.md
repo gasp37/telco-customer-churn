@@ -30,6 +30,8 @@ Great, we trained our model using PySpark and Dataproc, but since we don't have 
 
 Here's some screenshots from our gcp shell running the script:
 
-![Screenshot1](images/gcp_screenshoot1.png "Screenshot1")
+![Screenshot1](images/gcp_screenshot1.png "Screenshot1")
 
-![Screenshot2](images/gcp_screenshoot2.png "Screenshot2")
+---
+
+![Screenshot2](images/gcp_screenshot2.png "Screenshot2")

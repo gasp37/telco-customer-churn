@@ -245,7 +245,6 @@ train_table, test_table = train_test_splitter(customers_table)
 results = train_models(train_dataset=train_table, test_dataset=test_table, estimators=models_and_params)
 
 
-print(results)
 print('-'*36, '\nSalvando os resultados...')
 sdf_results = spark.createDataFrame(results)
 sdf_results.coalesce(1).write.mode('overwrite').format('json').save('gs://telco-churn-project/results')

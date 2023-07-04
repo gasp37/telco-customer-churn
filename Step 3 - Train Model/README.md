@@ -1,6 +1,6 @@
+# Step 3 - Train model
 
-
-We extracted this table from the results_from_dataproc.json file, here we can see the scores from each model.
+We extracted this table from the results_from_dataproc.json file on the Step 2 folder, here we can see the scores from each model.
 **Based on these results** from our models benchmarking, **we can pick our best model.** 
 But, remember, to pick "the best model" we need to **take into consideration our business problem.**
 

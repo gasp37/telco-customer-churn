@@ -20,4 +20,4 @@ On the other hand, a false negative means our model could not anticipate that cu
 
 Gladly, we have our recall metric, which tell us the ratio of how many churns were classified correctly from our total number of churns. The higher the number, the fewer the false negatives.
 
-That will take us to the SVM and Random Forest models. Both models have similar accuracy and f1-score rates, but our SVM model presented a 0.017 positive difference. With that, we'll train our SVM model with the hyper-parameters we got from cross-validation, and use it to predict our future churns.
+That will take us to the SVM and Random Forest models. Both models have similar accuracy and f1-score rates, but our SVM model presented a 0.017 positive difference on the recall metric. With that, we'll train our SVM model with the hyper-parameters we got from cross-validation, and use it to predict our future churns.

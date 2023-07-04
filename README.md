@@ -11,17 +11,19 @@ Formulate hypotheses regarding relations between the many variables and the chur
 
 **Step 1 - Analysis:**
 
-Initial Jupyter Notebook with an analysis of data relations and distribution.
+Initial Jupyter Notebook with an analysis of data patterns, relations and distribution.
 
-**Step 2 - Create ML model script:**
+**Step 2 - Models benchmarking:**
 
-Pre-process data, train models, evaluate models, and export results.
+Here we'll train a series of models, using different algorithms, hyper-parameters and pre-processing techniques. This will be done using PySpark on a GCP's Dataproc cluster.
+
+This stage includes the following steps: pre-processing data, train different models, evaluate those models with a set of various metrics, and export results for the next step.
 
 **Step 3 - Choose the best model, train it, and export predictions:**
 
-Based on the results exported in step 2, choose the one with the best performance.
+Based on the results exported in step 2, we'll pick the model that best addresses our business problem.
 
-Create a script that trains the best model, predicts its training data set, and exports the results
+We'll create a script that will train our model using PySpark, and since we don't have new data, we'll use our initial dataset to predict customers likely to churn and assume those are future customers. After that, we can export the data with the predicted values and use it for further analysis.
 
 **Step 4 - Answer hypotheses and create visuals**
 

@@ -128,10 +128,11 @@ train_table, test_table = train_test_splitter(customers_table)
 
 svm_model, results = train_svm_model(train_table, test_table, params, label='Churn_numeric')
 
-transformed = svm_model.transform(customers_table)
-customers_table_with_prediction = transformed.select(*string_variables, 'SeniorCitizen', 'Tenure', 'MonthlyCharges', 'TotalCharges', 'prediction')
+transformed = svm_model.transform(test_table)
+test_table_with_prediction = transformed.select(*string_variables, 'SeniorCitizen', 'Tenure', 'MonthlyCharges', 'TotalCharges', 'prediction')
 
-customers_table_with_prediction.coalesce(1).write.mode('overwrite').option('header',True).csv('gs://telco-churn-project/results/predicted_dataset')
+test_table_with_prediction.coalesce(1).write.mode('overwrite').option('header',True).csv('gs://telco-churn-project/results/predicted_dataset')
+customers_table.repartition(1).write.mode('overwrite').parquet('gs://telco-churn-project/data/processed')
 
 print('-'*36, '\nEncerrando a Spark Session e o Spark Context...')
 spark.stop()

@@ -24,7 +24,7 @@ That will point us to the SVM and Random Forest models. Both models have similar
 
 ---
 
-Great, we trained our model using PySpark and Dataproc, but since we don't have any new data, we'll have to use our initial dataset and assume that it represents the data from new customers. We will then predict those "new" cases, and export it for further analysis. You can find the script for training and predicting on **train_model.py** and the results from our prediction on **predicted_results.csv**, the column "prediction" indicates if the customer was classified as or possible churn or not. If can also find the commands used on the GCP shell to create a cluster, run a job with our script and then delete the cluster on the gcp_shell_commands.txt file.
+Great, we trained our model using PySpark and Dataproc, we exported our test dataset with all the predictions, and we can use that for further analysis. You can find the script for training and predicting on **train_model.py** and the results from our prediction on **predicted_results.csv**, the column "prediction" indicates if the customer was classified as or possible churn or not. If can also find the commands used on the GCP shell to create a cluster, run a job with our script and then delete the cluster on the **gcp_shell_commands.txt** file.
 
 ---
 

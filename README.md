@@ -56,5 +56,6 @@ We'll create a script that will train our model using PySpark, and since we don'
 
 **Step 4 - Draw strategies**
 
-With our model and it's predictions, we can analyze our data again, but now, with the purpose of finding patterns and draw strategies to handle the possible churn cases.
+With the model and the predictions we got from the last step, we were able to get into a deeper analysis of the patterns and behavior of our customers. Here is some conclusions and possible strategies we've got:
 
+ - 

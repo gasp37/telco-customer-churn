@@ -3,9 +3,9 @@ gcloud config set project telco-customers-churn-390019
 gcloud dataproc clusters create telco-model-benchmark --region=us-east1
 
 gcloud dataproc jobs submit pyspark \
-gs://telco-churn-project/scripts/train_model.py \
+gs://telco-churn-project/src/train_model.py \
 --cluster=telco-model-benchmark \
---py-files='gs://telco-churn-project/scripts/train_model.py' \
+--py-files='gs://telco-churn-project/src/train_model.py' \
 --region=us-east1
 
 gcloud dataproc clusters delete telco-model-benchmark --region=us-east1 --quiet
